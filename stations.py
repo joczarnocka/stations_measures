@@ -1,9 +1,13 @@
+from json import load
 from sqlalchemy import Table, Column, Integer, String, Float, Date, MetaData, ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import relationship
 import pandas as pd
 
-engine = create_engine("sqlite:///stations_v2.db", echo=True)
+# Questions: hot to generalize/simplify load_* functions, how to make FK int instad of station name,
+# Class instead of Table...
+
+engine = create_engine("sqlite:///stations_measures.db")  # , echo=True)
 
 meta = MetaData()
 
@@ -24,18 +28,18 @@ measures = Table(
     meta,
     Column("id", Integer, primary_key=True),
     Column("station", String, ForeignKey("stations.station"), nullable=False),
-    Column("date", Date),
+    Column("date", String),
     Column("precip", Float),
     Column("tobs", Integer),
 )
 
 
-if __name__ == "__main__":
-
-    meta.create_all(engine)
-    print(engine.table_names())
-
-    # load stations:
+def load_stations() -> None:
+    """
+    load stations from csv file fo DB
+    Arguments:
+    -
+    """
     ins = stations.insert()
     df = pd.read_csv(
         "clean_stations.csv",
@@ -71,14 +75,21 @@ if __name__ == "__main__":
     select1 = stations.select()
     result = conn.execute(select1)
 
-    print("Stations:\n==============")
+    print("Stations:\n===========")
     for row in result:
         print(row)
 
+
+def load_measures() -> None:
+    """
+    load measures from csv file fo DB
+    Arguments:
+    -
+    """
     # load measures:
     ins_measures = measures.insert()
     df = pd.read_csv(
-        "clean_measures.csv", header=0, names=["station", "date", "precip", "tobs"]
+        "clean_measure.csv", header=0, names=["station", "date", "precip", "tobs"]
     )
 
     ins_records = []
@@ -95,9 +106,16 @@ if __name__ == "__main__":
     conn = engine.connect()
     conn.execute(ins_measures, ins_records)
 
-    select2 = measures.select()
+    select2 = measures.select().where(measures.c.id <= 10)
     result = conn.execute(select2)
 
-    print("Measures:\n==============")
+    print("Measures (first 10):\n===================")
     for row in result:
         print(row)
+
+
+if __name__ == "__main__":
+    meta.create_all(engine)
+    print(engine.table_names())
+    load_stations()
+    load_measures()
