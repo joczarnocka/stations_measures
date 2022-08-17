@@ -1,31 +1,9 @@
 from sqlalchemy import Table, Column, Integer, String, Float, Date, MetaData, ForeignKey
 from sqlalchemy import create_engine
-from sqlalchemy.orm import relationship
+from tables import meta, stations, measures
 import pandas as pd
-
-meta = MetaData()
-
-stations = Table(
-    "stations",
-    meta,
-    Column("station", String, primary_key=True),
-    Column("latitude", Float),
-    Column("longitude", Float),
-    Column("elevation", Float),
-    Column("name", String),
-    Column("country", String),
-    Column("state", String),
-)
-
-measures = Table(
-    "measures",
-    meta,
-    Column("id", Integer, primary_key=True),
-    Column("station", String, ForeignKey("stations.station"), nullable=False),
-    Column("date", String),
-    Column("precip", Float),
-    Column("tobs", Integer),
-)
+import sqlite3
+from sqlite3 import Error
 
 
 def load_file_to_db(filename, columns, engine, insert_object) -> None:
@@ -78,7 +56,7 @@ def load_measures(filename, engine) -> None:
     load_file_to_db(filename, columns, engine, measures)
 
 
-def show_table(select_object, object_name, engine, n) -> None:
+def show_table(select_object, object_name, conn, n) -> None:
     """
     printing first n records of a table 
     Arguments:
@@ -87,7 +65,6 @@ def show_table(select_object, object_name, engine, n) -> None:
     -engine
     -n - number of printed records
     """
-    conn = engine.connect()
     select_tmp = select_object.select().limit(n)
     result = conn.execute(select_tmp)
     print(f"{object_name}:\n===========")
@@ -95,48 +72,74 @@ def show_table(select_object, object_name, engine, n) -> None:
         print(row)
 
 
-def show_stations(engine, n=10) -> None:
+def show_stations(conn, object_name = stations, n=10) -> None:
     """
     Print first n records of stations
     Arguments:
     -engine - DB engine
     -n - number of records
     """
-    show_table(stations, "Stations", engine, n)
+    show_table(object_name, "Stations", conn, n)
 
 
-def show_measures(enginem, n=20) -> None:
+def show_measures(conn, n=20) -> None:
     """
     Print first n records of mesures
     Arguments:
     -engine - DB engine
     -n - number of records
     """
-    show_table(measures, "Measures", engine, n)
+    show_table(measures, "Measures", conn, n)
 
 
-def check_if_data_loaded(engine):
-    conn = engine.connect()
-    select_tmp = stations.select().limit(1)
+def check_if_data_loaded(conn, object_select):
+    select_tmp = object_select.select().limit(1)
     result = conn.execute(select_tmp)
-    for _ in result:
-        return True
-    return False
+    return result.first()
+
+def create_connection(db_file):
+   """ create a database connection to the SQLite database
+       specified by db_file
+   :param db_file: database file
+   :return: Connection object or None
+   """
+   conn = None
+   try:
+       conn = sqlite3.connect(db_file)
+       return conn
+   except Error as e:
+       print(e)
+
+   return conn
 
 
 if __name__ == "__main__":
-    engine = create_engine("sqlite:///stations_measures.db")  # , echo=True)
+
+    db_file = "stations_measures.db"
+    engine = create_engine("sqlite:///" + db_file)  # , echo=True)
     meta.create_all(engine)
+    conn = engine.connect()
     print(engine.table_names())
-    loaded = check_if_data_loaded(engine)
+    loaded = check_if_data_loaded(conn, stations)
     if loaded:
         print(
             "Data had been already loaded - the loading will not be repeated (PK restrictions)"
         )
     else:
         print("Data will be loaded")
-        load_stations("clean_stations.csv", engine)
-        load_measures("clean_measure.csv", engine)
+        load_stations("clean_stations.csv", conn)
+        load_measures("clean_measure.csv", conn)
     print("Data:")
-    show_stations(engine)
-    show_measures(engine)
+    show_table(stations, "Stations", conn, 10)
+    show_table(measures, "Measures", conn, 20)
+    
+    # verification:
+    print("\nVerification:\n===============")
+    dbconn = create_connection(db_file)
+    cur = dbconn.cursor()
+    rows = cur.execute("SELECT * FROM stations LIMIT 5").fetchall()
+    for row in rows:
+        print(row)
+
+
+
