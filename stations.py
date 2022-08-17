@@ -1,10 +1,6 @@
-from sqlalchemy import Table, Column, Integer, String, Float, Date, MetaData, ForeignKey
 from sqlalchemy import create_engine
 from tables import meta, stations, measures
 import pandas as pd
-import sqlite3
-from sqlite3 import Error
-
 
 def load_file_to_db(filename, columns, conn, insert_object) -> None:
     """
@@ -71,7 +67,7 @@ def show_table(select_object, object_name, conn, n) -> None:
         print(row)
 
 
-def show_stations(conn, object_name = stations, n=10) -> None:
+def show_stations(conn, object_name=stations, n=10) -> None:
     """
     Print first n records of stations
     Arguments:
@@ -96,29 +92,13 @@ def check_if_data_loaded(conn, object_select):
     result = conn.execute(select_tmp)
     return result.first()
 
-def create_connection(db_file):
-   """ create a database connection to the SQLite database
-       specified by db_file
-   :param db_file: database file
-   :return: Connection object or None
-   """
-   conn = None
-   try:
-       conn = sqlite3.connect(db_file)
-       return conn
-   except Error as e:
-       print(e)
-
-   return conn
-
-
+    
 if __name__ == "__main__":
 
     db_file = "stations_measures.db"
     engine = create_engine("sqlite:///" + db_file)  # , echo=True)
     meta.create_all(engine)
     conn = engine.connect()
-    print(engine.table_names())
     loaded = check_if_data_loaded(conn, stations)
     if loaded:
         print(
@@ -131,14 +111,11 @@ if __name__ == "__main__":
     print("Data:")
     show_table(stations, "Stations", conn, 10)
     show_table(measures, "Measures", conn, 20)
-    
+
     # verification:
-    print("\nVerification (SELECT * FROM stations LIMIT 5):\n==============================================")
-    dbconn = create_connection(db_file)
-    cur = dbconn.cursor()
-    rows = cur.execute("SELECT * FROM stations LIMIT 5").fetchall()
+    print(
+        "\nVerification (SELECT * FROM stations LIMIT 5):\n=============================================="
+    )
+    rows = conn.execute("SELECT * FROM stations LIMIT 5").fetchall()
     for row in rows:
         print(row)
-
-
-
