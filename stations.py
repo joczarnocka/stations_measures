@@ -6,7 +6,7 @@ import sqlite3
 from sqlite3 import Error
 
 
-def load_file_to_db(filename, columns, engine, insert_object) -> None:
+def load_file_to_db(filename, columns, conn, insert_object) -> None:
     """
     load stations from csv file fo DB
     Arguments:
@@ -21,11 +21,10 @@ def load_file_to_db(filename, columns, engine, insert_object) -> None:
 
     dict_records = df.to_dict("records")
 
-    conn = engine.connect()
     conn.execute(ins, dict_records)
 
 
-def load_stations(filename, engine,) -> None:
+def load_stations(filename, conn, db_object) -> None:
     """
     load stations from csv file fo DB
     Arguments:
@@ -41,10 +40,10 @@ def load_stations(filename, engine,) -> None:
         "state",
     ]
 
-    load_file_to_db(filename, columns, engine, stations)
+    load_file_to_db(filename, columns, conn, db_object)
 
 
-def load_measures(filename, engine) -> None:
+def load_measures(filename, conn, db_object) -> None:
     """
     load measures from csv file fo DB
     Arguments:
@@ -53,7 +52,7 @@ def load_measures(filename, engine) -> None:
     """
     columns = ["station", "date", "precip", "tobs"]
 
-    load_file_to_db(filename, columns, engine, measures)
+    load_file_to_db(filename, columns, conn, db_object)
 
 
 def show_table(select_object, object_name, conn, n) -> None:
@@ -127,14 +126,14 @@ if __name__ == "__main__":
         )
     else:
         print("Data will be loaded")
-        load_stations("clean_stations.csv", conn)
-        load_measures("clean_measure.csv", conn)
+        load_stations("clean_stations.csv", conn, stations)
+        load_measures("clean_measure.csv", conn, measures)
     print("Data:")
     show_table(stations, "Stations", conn, 10)
     show_table(measures, "Measures", conn, 20)
     
     # verification:
-    print("\nVerification:\n===============")
+    print("\nVerification (SELECT * FROM stations LIMIT 5):\n==============================================")
     dbconn = create_connection(db_file)
     cur = dbconn.cursor()
     rows = cur.execute("SELECT * FROM stations LIMIT 5").fetchall()
